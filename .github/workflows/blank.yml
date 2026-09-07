@@ -17,7 +17,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+
+      - name: Show repo files
+        run: |
+          ls -la
+          pwd
 
       - name: Install dependencies
         run: |
@@ -26,6 +31,7 @@ jobs:
 
       - name: Run video generator
         run: |
+          ls -la
           python gerar_video_mp4.py
 
       - name: Upload output video
