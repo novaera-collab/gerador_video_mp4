@@ -22,7 +22,6 @@ jobs:
       - name: Show repo files
         run: |
           ls -la
-          pwd
 
       - name: Install dependencies
         run: |
