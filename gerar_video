@@ -1,0 +1,154 @@
+from pathlib import Path
+import math
+import textwrap
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+from moviepy.editor import VideoClip
+
+
+OUTPUT_PATH = Path.home() / "Downloads" / "encarte_tutorial.mp4"
+WIDTH, HEIGHT = 1920, 1080
+FPS = 24
+DURATION = 18
+
+
+SLIDES = [
+    {
+        "title": "Criação de Encartes",
+        "subtitle": "Estrutura, visão, destaque e objetivo",
+        "bullets": [
+            "1. Defina a mensagem principal",
+            "2. Organize o layout e a hierarquia visual",
+            "3. Use imagens, cores e espaçamento com foco",
+            "4. Chame a ação e destaque a oferta",
+        ],
+    },
+    {
+        "title": "Objetivo do encarte",
+        "subtitle": "Comunicar valor e incentivar a compra",
+        "bullets": [
+            "· Entenda o público",
+            "· Defina a oferta principal",
+            "· Escreva uma mensagem clara",
+            "· Destaque o benefício do cliente",
+        ],
+    },
+    {
+        "title": "Layout eficiente",
+        "subtitle": "Leitura rápida e visual forte",
+        "bullets": [
+            "· Capa com foco visual",
+            "· Títulos grandes e legíveis",
+            "· Blocos organizados em sequência",
+            "· Área de CTA com destaque",
+        ],
+    },
+    {
+        "title": "Pronto para vender",
+        "subtitle": "Material atrativo, profissional e persuasivo",
+        "bullets": [
+            "· Produtos/serviços em destaque",
+            "· Oferta clara e direta",
+            "· Chamada para ação visível",
+            "· Resultado final: compra e conversão",
+        ],
+    },
+]
+
+
+def get_font(size: int, bold: bool = False):
+    candidates = [
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/calibri.ttf",
+        "C:/Windows/Fonts/verdana.ttf",
+        "C:/Windows/Fonts/tahoma.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    ]
+    for path in candidates:
+        try:
+            return ImageFont.truetype(path, size=size)
+        except Exception:
+            pass
+    return ImageFont.load_default()
+
+
+def draw_avatar(draw, cx, cy, t):
+    draw.rounded_rectangle((cx - 120, cy + 160, cx + 120, cy + 330), fill=(120, 200, 255), radius=25)
+    draw.polygon([(cx - 120, cy + 110), (cx + 120, cy + 110), (cx + 60, cy + 320), (cx - 60, cy + 320)], fill=(102, 187, 255))
+    head_y = cy - 55
+    draw.ellipse((cx - 80, head_y, cx + 80, head_y + 160), fill=(244, 216, 190))
+    draw.ellipse((cx - 82, head_y - 30, cx + 82, head_y + 55), fill=(35, 29, 24))
+    blink = 0.3 + 0.7 * (0.5 + 0.5 * math.sin(t * 10))
+    eye_h = max(4, int(12 * blink))
+    draw.ellipse((cx - 42, head_y + 55, cx - 18, head_y + 55 + eye_h), fill=(32, 32, 32))
+    draw.ellipse((cx + 18, head_y + 55, cx + 42, head_y + 55 + eye_h), fill=(32, 32, 32))
+    mouth = 8 + int(14 * (0.5 + 0.5 * math.sin(t * 12)))
+    draw.arc((cx - 35, head_y + 90, cx + 35, head_y + 90 + mouth), start=200, end=340, fill=(140, 70, 60), width=5)
+
+
+def build_frame(t: float):
+    slide_index = min(len(SLIDES) - 1, int(t / (DURATION / len(SLIDES))))
+    slide = SLIDES[slide_index]
+    img = Image.new("RGB", (WIDTH, HEIGHT), color=(10, 14, 22))
+    draw = ImageDraw.Draw(img)
+
+    for i in range(0, HEIGHT, 120):
+        alpha = 12 + (i // 10) % 20
+        draw.rectangle((0, i, WIDTH, i + 70), fill=(255, 255, 255, alpha))
+
+    for cx, cy, r, color in [
+        (250, 200, 160, (100, 214, 255)),
+        (1720, 220, 180, (158, 125, 255)),
+        (1650, 860, 190, (116, 220, 160)),
+    ]:
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline=color, width=3)
+
+    left_box = (80, 100, 820, 980)
+    draw.rounded_rectangle(left_box, radius=26, fill=(18, 22, 38), outline=(120, 180, 255), width=3)
+    draw_avatar(draw, 460, 520, t)
+
+    right_box = (980, 120, 1840, 940)
+    draw.rounded_rectangle(right_box, radius=30, fill=(15, 17, 30), outline=(120, 210, 255), width=3)
+
+    title_font = get_font(56, bold=True)
+    subtitle_font = get_font(32)
+    bullet_font = get_font(28)
+
+    draw.text((1060, 180), slide["title"], fill=(255, 255, 255), font=title_font)
+    draw.text((1060, 255), slide["subtitle"], fill=(120, 210, 255), font=subtitle_font)
+
+    y = 350
+    for item in slide["bullets"]:
+        wrapped = textwrap.wrap(item, width=26)
+        for line in wrapped:
+            draw.text((1060, y), line, fill=(235, 240, 255), font=bullet_font)
+            y += 46
+        y += 15
+
+    footer = "Tutorial de encarte • Python • Visual profissional"
+    draw.text((1060, 860), footer, fill=(160, 170, 200), font=get_font(24))
+
+    return np.array(img)
+
+
+def render_video(output_path: Path):
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    clip = VideoClip(build_frame, duration=DURATION)
+    clip = clip.resize(width=1920, height=1080)
+    clip.write_videofile(
+        str(output_path),
+        fps=FPS,
+        codec="libx264",
+        audio=False,
+        preset="medium",
+        threads=2,
+    )
+
+
+if __name__ == "__main__":
+    print(f"Gerando vídeo em: {OUTPUT_PATH}")
+    render_video(OUTPUT_PATH)
+    print("Arquivo gerado com sucesso.")
